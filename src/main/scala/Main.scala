@@ -46,6 +46,7 @@ object Main {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
+    glfwWindowHint(GLFW_SAMPLES, 4)
 
     val window = glfwCreateWindow(640, 480, "Hello World!", NULL, NULL)
     if(window == NULL) {
@@ -90,10 +91,15 @@ object Main {
   def drawTriangle(shader: Int, texture1: Int, texture2: Int): Unit = {
     for(stack <- managed(stackPush())) {
       val verticies: FloatBuffer = stack.floats(
-        // Positions          // Colors           // Texture Coords
-        -0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f,         // Bottom Right
-        0.5f, -0.5f, 0.0f,    0.0f, 1.0f, 0.0f,   1.0f, 0.0f,         // Bottom Left
-        0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,   0.5f, 1.0f          // Top
+        // Positions           // Colors           // Texture Coords
+        0.5f,   0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top Right
+        0.5f,  -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom Right
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom Left
+        -0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 1.0f    // Top Left
+      )
+      val indicies: IntBuffer = stack.ints(
+        0, 1, 2, // First triangle
+        2, 3, 0  // Second triangle
       )
 
       val rotation = Quaternion.forAxisAngle(Orientation.z, GLFW.glfwGetTime.toFloat * (Pi.toFloat / 4.0f))
@@ -107,7 +113,11 @@ object Main {
       glBindVertexArray(vao)
         val vbo = glGenBuffers()
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
-        glBufferData(GL_ARRAY_BUFFER, verticies, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, verticies, GL_DYNAMIC_DRAW)
+
+        val ebo = glGenBuffers()
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies, GL_DYNAMIC_DRAW)
 
         // Position attribute
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 8 * FLOAT_BYTES, 0)
@@ -136,7 +146,7 @@ object Main {
       glUniform1i(glGetUniformLocation(shader, "ourTexture2"), 1)
 
       glBindVertexArray(vao)
-      glDrawArrays(GL_TRIANGLES, 0, 3)
+      glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)
       glBindVertexArray(0)
 
       glBindTexture(GL_TEXTURE_2D, 0)
