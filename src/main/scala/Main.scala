@@ -25,68 +25,11 @@ import org.lwjgl.system.MemoryUtil._
 import net.jakewoods.breakblock.opengl._
 import net.jakewoods.breakblock.opengl.math._
 
-object Main {
-  type Window = Long
+import monix.execution.Scheduler.Implicits.global
 
+object Main {
   val INT_BYTES = 4
   val FLOAT_BYTES = 4
-
-  def initialize(): Window = {
-    GLFWErrorCallback.createPrint(System.err).set
-
-    if(!glfwInit()) {
-      println("Unable to initialize GLFW!")
-      return NULL
-    }
-
-    // Configure GLFW
-    glfwDefaultWindowHints()
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE)
-    glfwWindowHint(GLFW_SAMPLES, 4)
-
-    val window = glfwCreateWindow(640, 480, "Hello World!", NULL, NULL)
-    if(window == NULL) {
-      println("Failed to create GLFW window.")
-      return NULL
-    }
-
-    glfwSetKeyCallback(window, handleKeypress _)
-
-    // Get the thread stack and push a new frame
-    for(stack <- managed(stackPush())) {
-      val pWidth: IntBuffer = stack.mallocInt(1)
-      val pHeight: IntBuffer = stack.mallocInt(1)
-
-      glfwGetWindowSize(window, pWidth, pHeight)
-
-      val vidmode: GLFWVidMode = glfwGetVideoMode(glfwGetPrimaryMonitor())
-
-      // Center the window
-      glfwSetWindowPos(
-        window,
-        (vidmode.width() - pWidth.get(0)) / 2,
-        (vidmode.height() - pHeight.get(0)) / 2
-      );
-    }
-
-    glfwMakeContextCurrent(window)
-
-    glfwSwapInterval(1)
-
-    glfwShowWindow(window)
-
-    GL.createCapabilities()
-
-    window
-  }
-
-  def handleKeypress(window: Long, key: Int, scancode: Int, action: Int, mods: Int): Unit = {
-    println("key pressed")
-  }
 
   def drawTriangle(shader: Int, texture1: Int, texture2: Int): Unit = {
     for(stack <- managed(stackPush())) {
@@ -156,28 +99,29 @@ object Main {
   def loop(window: Window, shader: Int, texture1: Int, texture2: Int) {
     glClearColor(0.4f, 0.0f, 0.7f, 0.0f)
 
-    while(!glfwWindowShouldClose(window)) {
+    while(!glfwWindowShouldClose(window.id)) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
       drawTriangle(shader, texture1, texture2)
 
       glfwPollEvents()
-      glfwSwapBuffers(window)
+      glfwSwapBuffers(window.id)
     }
   }
 
   def main(args: Array[String]): Unit = {
     println("Hello!")
 
-    val window = initialize()
-
-    val stuff = for {
+    val initialData = for {
+      window <- Window.create()
       shader <- Shader.compileProgram("vertexShader.glsl", "fragmentShader.glsl")
       texture1 <- Texture.load("wall.jpg")
       texture2 <- Texture.load("awesomeface.png")
-    } yield (shader, texture1, texture2)
+    } yield (window, shader, texture1, texture2)
 
-    stuff.map { case (shader, texture1, texture2) =>
+    initialData.map { case (window, shader, texture1, texture2) =>
+      window.keypressObservable.foreach(e => println(e))
+
       loop(window, shader, texture1, texture2)
     }.leftMap { e => println(s"ERROR: ${e}")}
   }

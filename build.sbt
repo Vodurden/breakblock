@@ -15,6 +15,7 @@ fork in run := true
 libraryDependencies ++= Seq(
   "org.typelevel" %% "cats" % "0.9.0",
   "com.jsuereth" %% "scala-arm" % "2.0",
+  "io.monix" %% "monix" % "2.3.0",
 
   "org.lwjgl" % "lwjgl" % "3.1.1",
   "org.lwjgl" % "lwjgl-glfw" % "3.1.1",
