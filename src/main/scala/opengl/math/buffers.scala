@@ -1,4 +1,4 @@
-package net.jakewoods.beatemup.opengl.math
+package net.jakewoods.breakblock.opengl.math
 
 import java.nio.{ByteBuffer, ByteOrder, FloatBuffer}
 

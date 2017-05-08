@@ -1,4 +1,4 @@
-package net.jakewoods.beatemup
+package net.jakewoods.breakblock
 
 import scala.math.Pi
 
@@ -22,8 +22,8 @@ import org.lwjgl.opengl.GL30._
 import org.lwjgl.system.MemoryStack._
 import org.lwjgl.system.MemoryUtil._
 
-import net.jakewoods.beatemup.opengl._
-import net.jakewoods.beatemup.opengl.math._
+import net.jakewoods.breakblock.opengl._
+import net.jakewoods.breakblock.opengl.math._
 
 object Main {
   type Window = Long

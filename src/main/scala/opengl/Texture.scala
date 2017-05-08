@@ -1,4 +1,4 @@
-package net.jakewoods.beatemup.opengl
+package net.jakewoods.breakblock.opengl
 
 import resource._
 import cats._

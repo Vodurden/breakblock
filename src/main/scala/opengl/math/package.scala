@@ -1,4 +1,4 @@
-package net.jakewoods.beatemup.opengl
+package net.jakewoods.breakblock.opengl
 
 /** Taken from: https://github.com/jpbetz/subspace
   *

@@ -1,4 +1,4 @@
-package net.jakewoods.beatemup.opengl.math
+package net.jakewoods.breakblock.opengl.math
 
 private[math] object Floats {
   def clamp(value: Float, min: Float, max: Float): Float = {

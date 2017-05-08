@@ -1,4 +1,4 @@
-name := "Beat Em Up"
+name := "breakblock"
 
 version := "0.1"
 
