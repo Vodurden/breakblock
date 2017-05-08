@@ -1,5 +1,7 @@
 package net.jakewoods.beatemup
 
+import scala.math.Pi
+
 import resource._
 import cats._
 import cats.implicits._
@@ -21,6 +23,7 @@ import org.lwjgl.system.MemoryStack._
 import org.lwjgl.system.MemoryUtil._
 
 import net.jakewoods.beatemup.opengl._
+import net.jakewoods.beatemup.opengl.math._
 
 object Main {
   type Window = Long
@@ -93,6 +96,13 @@ object Main {
         0.0f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,   0.5f, 1.0f          // Top
       )
 
+      val rotation = Quaternion.forAxisAngle(Orientation.z, GLFW.glfwGetTime.toFloat * (Pi.toFloat / 4.0f))
+      val translationMatrix = Matrix4x4.forTranslation(Vector3(0.5f, -0.5f, 0.0f))
+      val rotationMatrix = Matrix4x4.forRotation(rotation)
+      val scaleMatrix = Matrix4x4.forScale(Vector3(0.5f, 0.5f, 0.5f))
+      val matrix = translationMatrix * scaleMatrix * rotationMatrix
+      val matrixBuffer = matrix.allocateBuffer
+
       val vao = glGenVertexArrays()
       glBindVertexArray(vao)
         val vbo = glGenBuffers()
@@ -113,6 +123,9 @@ object Main {
       glBindVertexArray(0)
 
       glUseProgram(shader)
+
+      val transformLocation = glGetUniformLocation(shader, "transform")
+      glUniformMatrix4fv(transformLocation, false, matrixBuffer)
 
       glActiveTexture(GL_TEXTURE0)
       glBindTexture(GL_TEXTURE_2D, texture1)
