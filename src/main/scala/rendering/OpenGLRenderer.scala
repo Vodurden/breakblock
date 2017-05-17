@@ -51,6 +51,7 @@ class OpenGLRenderer(initialState: GameState, systems: List[(GameActions, GameSt
       gameState = systems.foldLeft(gameState)((state, system) => system(gameActions, state))
 
       // render
+      render()
       glfwSwapBuffers(window.id)
     }
   }
@@ -72,6 +73,10 @@ class OpenGLRenderer(initialState: GameState, systems: List[(GameActions, GameSt
     events.toList
   }
 
-  def render: Unit = {
+  def render(gameState: GameState): Unit = {
+    renderRectangleComponents()
+  }
+
+  def renderRectangleComponents(gameState: GameState): Unit = {
   }
 }

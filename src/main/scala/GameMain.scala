@@ -36,7 +36,18 @@ object GameMain {
   def main(args: Array[String]): Unit = {
     println("Hello streaming!")
 
-    val initialState = GameState(x = 0)
+    val paddle = Entity(Some("paddle"))
+
+    val positionComponents = List(
+      PositionComponent(paddle, 320, 500)
+    )
+
+    val rectangleRenderComponents = List(
+      RectangleRenderComponent(paddle, 50, 50)
+    )
+
+    val initialState = GameState(positionComponents, rectangleRenderComponents)
+
     val systems = List(
       PlayerInputSystem.system
     )
