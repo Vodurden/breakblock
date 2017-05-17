@@ -7,10 +7,13 @@ scalaVersion in ThisBuild := "2.12.1"
 val os = sys.props("os.name").toLowerCase
 val lwjglNativesClasifier = os match {
   case os if os.startsWith("windows") => "natives-windows"
+  case os if os.startsWith("mac") || os.startsWith("dar") => "natives-macos"
   case os if os.startsWith("linux") => "natives-linux"
 }
 
 fork in run := true
+
+javaOptions ++= Seq("-XstartOnFirstThread", "-Djava.awt.headless=true")
 
 libraryDependencies ++= Seq(
   "org.typelevel" %% "cats" % "0.9.0",
