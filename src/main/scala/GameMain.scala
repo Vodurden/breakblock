@@ -34,6 +34,8 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Random
 
+// TODO: Make systems fire off the changes the want to make instead of
+//       making changes inline. That'll fix the death-ball issue
 object GameMain {
   def main(args: Array[String]): Unit = {
     println("Hello streaming!")
@@ -53,7 +55,8 @@ object GameMain {
 
     val systems = List[(FrameState, GameState) => GameState](
       PlayerInputSystem.system,
-      PhysicsSystem.system
+      PhysicsSystem.system,
+      DamageSystem.system
     )
 
     val renderer = new OpenGLRenderer(initialState, systems)

@@ -5,6 +5,10 @@ case class ComponentMap[A](components: Map[Entity, A]) {
     components.get(entity)
   }
 
+  def delete(entity: Entity): ComponentMap[A] = {
+    ComponentMap(components - entity)
+  }
+
   def update(entity: Entity, newComponent: A): ComponentMap[A] = {
     ComponentMap(components + (entity -> newComponent))
   }

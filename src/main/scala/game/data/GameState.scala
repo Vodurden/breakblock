@@ -6,8 +6,19 @@ case class GameState(
   paddle: Option[Entity],
 
   spatials: ComponentMap[SpatialComponent],
-  sprites: ComponentMap[SpriteComponent]
+  sprites: ComponentMap[SpriteComponent],
+  breakables: ComponentMap[BreakableComponent]
 ) {
+  def deleteEntity(entity: Entity): GameState = {
+    this.copy(
+      paddle = if(Some(entity) == this.paddle) None else this.paddle,
+
+      spatials = spatials.delete(entity),
+      sprites = sprites.delete(entity),
+      breakables = breakables.delete(entity)
+    )
+  }
+
   def mkPaddle(rng: () => Int): GameState = {
     val paddle = Entity(rng())
 
@@ -59,9 +70,12 @@ case class GameState(
 
     val sprite = SpriteComponent(color)
 
+    val breakable = BreakableComponent(1)
+
     this.copy(
       spatials = spatials.update(brick, spatial),
-      sprites = sprites.update(brick, sprite)
+      sprites = sprites.update(brick, sprite),
+      breakables = breakables.update(brick, breakable)
     )
   }
 
@@ -81,6 +95,7 @@ object GameState {
   def empty: GameState = GameState(
     paddle = None,
     spatials = ComponentMap.empty[SpatialComponent],
-    sprites = ComponentMap.empty[SpriteComponent]
+    sprites = ComponentMap.empty[SpriteComponent],
+    breakables = ComponentMap.empty[BreakableComponent]
   )
 }

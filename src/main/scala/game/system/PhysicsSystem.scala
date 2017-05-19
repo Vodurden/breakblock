@@ -69,34 +69,16 @@ object PhysicsSystem {
   }
 
   def applyCollision(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = state.spatials.components
-      .toList
-      .combinations(2).foldLeft(state.spatials) {
-        case (spatials, List((entityA, a), (entityB, b))) => {
-          doCollision(a, b).map { case (newA, newB) =>
-            spatials.update(entityA, newA)
-              .update(entityB, newB)
-          }.getOrElse(spatials)
-        }
-      }
+    val newSpatials = SpatialComponent
+      .mapColliding(state.spatials)((_, spatial, location, overlap) => {
+        println(s"COLLISION, ${frame.time}")
+        val velocity = doVelocity(spatial, location)
+        val translation = doTranslation(spatial, location, overlap)
+
+        spatial.copy(velocity = velocity).translate(translation)
+      })
 
     state.copy(spatials = newSpatials)
-  }
-
-  def doCollision(
-    a: SpatialComponent, b: SpatialComponent
-  ): Option[(SpatialComponent, SpatialComponent)] = {
-    SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
-      val velocityA = doVelocity(a, aLocation)
-      val velocityB = doVelocity(b, bLocation)
-      val translationA = doTranslation(a, aLocation, overlap)
-      val translationB = doTranslation(b, bLocation, overlap)
-
-      val newA = a.copy(velocity = velocityA).translate(translationA)
-      val newB = b.copy(velocity = velocityB).translate(translationB)
-
-      (newA, newB)
-    }
   }
 
   def doTranslation(

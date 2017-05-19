@@ -51,11 +51,14 @@ class OpenGLRenderer(initialState: GameState, systems: List[(FrameState, GameSta
     while(!glfwWindowShouldClose(window.id)) {
       // gather input
       val events = pollEvents(window)
-      val frameState = FrameState(events = events)
+      val time = glfwGetTime()
+      val frameState = FrameState(events = events, time = time)
 
       // update - ideally something else should handle this but for now
       //          we need to do it in this loop
-      gameState = systems.foldLeft(gameState)((state, system) => system(frameState, state))
+      gameState = systems.foldLeft(gameState)((state, system) => {
+        system(frameState, state)
+      })
 
       render(window, worldShader, gameState)
     }
