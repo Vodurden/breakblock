@@ -26,6 +26,10 @@ object Shader {
   case class FragmentCompileError(error: String, source: String) extends Error
   case class ProgramCompileError(error: String) extends Error
 
+  def compileProgram(commonShaderName: String): Either[Error, ShaderProgram] = {
+    compileProgram(s"${commonShaderName}.vert", s"${commonShaderName}.frag")
+  }
+
   def compileProgram(
     vertexShaderName: String, fragmentShaderName: String
   ): Either[Error, ShaderProgram] = {

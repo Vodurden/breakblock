@@ -11,9 +11,15 @@ val lwjglNativesClasifier = os match {
   case os if os.startsWith("linux") => "natives-linux"
 }
 
-fork in run := true
+val osJvmOptions = os match {
+  // We need these flags on OSX to make AWT play nice
+  case os if os.startsWith("mac") || os.startsWith("dar") => Seq("-XstartOnFirstThread", "-Djava.awt.headless=true")
+  case _ => Seq()
+}
 
-javaOptions ++= Seq("-XstartOnFirstThread", "-Djava.awt.headless=true")
+javaOptions ++= osJvmOptions
+
+fork in run := true
 
 libraryDependencies ++= Seq(
   "org.typelevel" %% "cats" % "0.9.0",

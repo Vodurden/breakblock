@@ -25,31 +25,35 @@ import org.lwjgl.system.MemoryUtil._
 import net.jakewoods.breakblock.opengl._
 import net.jakewoods.breakblock.opengl.math._
 import net.jakewoods.breakblock.rendering.OpenGLRenderer
-import net.jakewoods.breakblock.game.system.PlayerInputSystem
+import net.jakewoods.breakblock.game.system._
 import net.jakewoods.breakblock.game.data._
 
 import monix.execution.Scheduler
 import scala.concurrent.Await
+
 import scala.concurrent.duration._
+import scala.util.Random
 
 object GameMain {
   def main(args: Array[String]): Unit = {
     println("Hello streaming!")
 
-    val paddle = Entity(Some("paddle"))
+    val random = new Random()
+    val genEntityId = () => random.nextInt(50000)
 
-    val positionComponents = List(
-      PositionComponent(paddle, 320, 500)
-    )
+    val blueish = Vector3(0.0f, 0.0f, 0.5f)
+    val initialState = GameState.empty
+      .mkBall(() => 50)
+      .mkPaddle(() => 100)
+      .mkBrickLine(genEntityId)(22, 5, 7, 5, Vector3(0.0f, 0.0f, 0.5f))
+      .mkBrickLine(genEntityId)(22, 30, 7, 5, Vector3(0.0f, 0.2f, 0.5f))
+      .mkBrickLine(genEntityId)(22, 55, 7, 5, Vector3(0.0f, 0.5f, 0.5f))
+      .mkBrickLine(genEntityId)(22, 80, 7, 5, Vector3(0.2f, 0.5f, 0.5f))
+      .mkBrickLine(genEntityId)(22, 105, 7, 5, Vector3(0.5f, 0.5f, 0.2f))
 
-    val rectangleRenderComponents = List(
-      RectangleRenderComponent(paddle, 50, 50)
-    )
-
-    val initialState = GameState(positionComponents, rectangleRenderComponents)
-
-    val systems = List(
-      PlayerInputSystem.system
+    val systems = List[(FrameState, GameState) => GameState](
+      PlayerInputSystem.system,
+      PhysicsSystem.system
     )
 
     val renderer = new OpenGLRenderer(initialState, systems)
