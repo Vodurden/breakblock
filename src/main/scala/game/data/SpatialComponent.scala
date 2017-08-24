@@ -2,6 +2,8 @@ package net.jakewoods.breakblock.game.data
 
 import net.jakewoods.breakblock.opengl.math._
 
+import Entity._
+
 /** Defines how this object reacts when it collides with another object
   *
   * Static: No movement
@@ -64,7 +66,7 @@ object SpatialComponent {
   }
 
   def getColliding(spatials: ComponentMap[SpatialComponent]): List[Entity] = {
-    spatials.components.toList.combinations(2).flatMap {
+    spatials.toList.combinations(2).flatMap {
       case Seq((entityA, a), (entityB, b)) => {
         SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
           List(entityA, entityB)
@@ -76,7 +78,7 @@ object SpatialComponent {
   def mapColliding(spatials: ComponentMap[SpatialComponent])
     (f: (Entity, SpatialComponent, Location, Float) => SpatialComponent): ComponentMap[SpatialComponent] = {
 
-    spatials.components.toList.combinations(2).foldLeft(spatials) {
+    spatials.toList.combinations(2).foldLeft(spatials) {
       case (spatials, List((entityA, a), (entityB, b))) => {
         SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
           val newA = f(entityA, a, aLocation, overlap)
@@ -108,13 +110,13 @@ object SpatialComponent {
       val smallestCollision = List(bottomCollision, topCollision, leftCollision, rightCollision).min
 
       if(smallestCollision == bottomCollision) {
-        Some(Location.Bottom, Location.Top, smallestCollision)
+        Some((Location.Bottom, Location.Top, smallestCollision))
       } else if(smallestCollision == topCollision) {
-        Some(Location.Top, Location.Bottom, smallestCollision)
+        Some((Location.Top, Location.Bottom, smallestCollision))
       } else if(smallestCollision == rightCollision) {
-        Some(Location.Right, Location.Left, smallestCollision)
+        Some((Location.Right, Location.Left, smallestCollision))
       } else if(smallestCollision == leftCollision) {
-        Some(Location.Left, Location.Right, smallestCollision)
+        Some((Location.Left, Location.Right, smallestCollision))
       } else {
         None
       }

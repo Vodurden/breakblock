@@ -31,7 +31,10 @@ import net.jakewoods.breakblock.opengl.math._
 import net.jakewoods.breakblock.opengl.Shader._
 import net.jakewoods.breakblock.game.data._
 
-class OpenGLRenderer(initialState: GameState, systems: List[(FrameState, GameState) => GameState]) {
+class OpenGLRenderer(
+  initialState: GameState,
+  updateState: (FrameState, GameState) => GameState
+) {
   val INT_BYTES = 4
   val FLOAT_BYTES = 4
   var gameState: GameState = initialState
@@ -56,9 +59,7 @@ class OpenGLRenderer(initialState: GameState, systems: List[(FrameState, GameSta
 
       // update - ideally something else should handle this but for now
       //          we need to do it in this loop
-      gameState = systems.foldLeft(gameState)((state, system) => {
-        system(frameState, state)
-      })
+      gameState = updateState(frameState, gameState)
 
       render(window, worldShader, gameState)
     }
@@ -121,7 +122,7 @@ class OpenGLRenderer(initialState: GameState, systems: List[(FrameState, GameSta
       // a position and rectangle component.
       val spatials = gameState.spatials
       val rectangles = gameState.sprites
-      val renderables = ComponentMap.intersect(spatials, rectangles).getAll
+      val renderables = (spatials intersection rectangles).values
 
       glUseProgram(worldShader)
       renderables.foreach { case(spatial, sprite) =>

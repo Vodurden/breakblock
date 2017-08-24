@@ -1,39 +1,50 @@
 package net.jakewoods.breakblock.game.data
 
-case class ComponentMap[A](components: Map[Entity, A]) {
-  def findByEntity(entity: Entity): Option[A] = {
-    components.get(entity)
-  }
+import scala.collection.immutable.IntMap
+
+import Entity._
+
+case class ComponentMap[A](intMap: IntMap[A]) {
+  def findByEntity(entity: Entity): Option[A] = intMap.get(entity)
+
+  def filter(f: ((Entity, A)) => Boolean): ComponentMap[A] = ComponentMap(intMap.filter(f))
 
   def delete(entity: Entity): ComponentMap[A] = {
-    ComponentMap(components - entity)
+    ComponentMap(intMap - entity)
   }
 
   def update(entity: Entity, newComponent: A): ComponentMap[A] = {
-    ComponentMap(components + (entity -> newComponent))
+    ComponentMap(intMap + (entity -> newComponent))
   }
 
-  def get(e: Entity): A = components(e)
-  def getAll: Iterable[A] = components.values
+  def ++(right: Iterable[(Entity, A)]): ComponentMap[A] =
+    ComponentMap(this.intMap ++ right)
 
-  def intersect[B](other: ComponentMap[B]): ComponentMap[(A, B)] = {
-    ComponentMap.intersect(this, other)
-  }
-}
+  def get(e: Entity): A = intMap(e)
+  def values: Iterable[A] = intMap.values
+  def keys: Iterable[Entity] = intMap.keys
 
-object ComponentMap {
-  def empty[A]: ComponentMap[A] = ComponentMap[A](Map[Entity, A]())
+  def mapValues[B](f: A => B): ComponentMap[B] = ComponentMap(intMap.transform((id: Entity, v: A) => f(v)))
 
   /** Returns a new component map containing entities which have components
     * in both component maps.
     */
-  def intersect[A,B](a: ComponentMap[A], b: ComponentMap[B]): ComponentMap[(A, B)] = {
-    val keysIntersection = a.components.keySet.intersect(b.components.keySet)
+  def intersection[B](right: ComponentMap[B]): ComponentMap[(A,B)] =
+    intersectionWith((_: Entity, a: A, b: B) => (a, b))(right)
 
-    ComponentMap(
-      keysIntersection
-        .map(key => (key, (a.components.get(key).get, b.components.get(key).get)))
-        .toMap[Entity, (A,B)]
-    )
-  }
+  def leftIntersection[B](right: ComponentMap[B]): ComponentMap[A] =
+    intersectionWith((_: Entity, a: A, _: B) => a)(right)
+
+  def rightInteresction[B](right: ComponentMap[B]): ComponentMap[B] =
+    intersectionWith((_: Entity, _: A, b: B) => b)(right)
+
+  def intersectionWith[B,C](f: (Entity,A,B) => C)(right: ComponentMap[B]): ComponentMap[C] =
+    ComponentMap(this.intMap.intersectionWith(right.intMap, f))
+
+  def toList: List[(Entity, A)] = intMap.toList
+}
+
+object ComponentMap {
+  def empty[A]: ComponentMap[A] = ComponentMap[A](IntMap[A]())
+
 }

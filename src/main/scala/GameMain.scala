@@ -53,13 +53,19 @@ object GameMain {
       .mkBrickLine(genEntityId)(22, 80, 7, 5, Vector3(0.2f, 0.5f, 0.5f))
       .mkBrickLine(genEntityId)(22, 105, 7, 5, Vector3(0.5f, 0.5f, 0.2f))
 
-    val systems = List[(FrameState, GameState) => GameState](
-      PlayerInputSystem.system,
-      PhysicsSystem.system,
-      DamageSystem.system
-    )
+    val updateState = (frameState: FrameState, gameState: GameState) => {
+      val systems = List[(FrameState, GameState) => GameState](
+        PlayerInputSystem.system,
+        DamageSystem.system,
+        PhysicsSystem.system
+      )
 
-    val renderer = new OpenGLRenderer(initialState, systems)
+      systems.foldLeft(gameState)((state, system) => {
+        system(frameState, state)
+      })
+    }
+
+    val renderer = new OpenGLRenderer(initialState, updateState)
     renderer.run
   }
 }

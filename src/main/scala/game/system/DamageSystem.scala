@@ -20,20 +20,15 @@ object DamageSystem {
     }).flatten.toMap
 
     state.copy(
-      breakables = ComponentMap(
-        state.breakables.components ++ damagedBreakables
-      )
+      breakables = state.breakables ++ damagedBreakables
     )
   }
 
   def applyDeath(state: GameState): GameState = {
-    val deadEntities = state.breakables.components
+    val deadEntities = state.breakables
       .filter { case (_, breakable) => breakable.health <= 0 }
       .keys
 
-    /*deadEntities.foldLeft(state)((s, deadEntity) => {
-      s.deleteEntity(deadEntity)
-    })*/
-    state
+    state.deleteEntities(deadEntities)
   }
 }

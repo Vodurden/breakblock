@@ -1,3 +1,5 @@
 package net.jakewoods.breakblock.game.data
 
-case class Entity(id: Int) extends AnyVal
+object Entity {
+  type Entity = Int
+}

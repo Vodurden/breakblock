@@ -1,6 +1,11 @@
 package net.jakewoods.breakblock.game.data
 
 import net.jakewoods.breakblock.opengl.math._
+import Entity._
+
+// System overview: (GameState, FrameState) -> (AnalyzedGameState, FrameState) -> [Systems] -> [GameStateDiff] -> GameState
+// TODO: Use IntMap instead of ComponentMap
+// TODO: Remove Paddle, use "PlayerControlledComponent" or similar
 
 case class GameState(
   paddle: Option[Entity],
@@ -19,8 +24,12 @@ case class GameState(
     )
   }
 
+  def deleteEntities(entities: Iterable[Entity]): GameState = {
+    entities.foldLeft(this) { (s, entity) => s.deleteEntity(entity) }
+  }
+
   def mkPaddle(rng: () => Int): GameState = {
-    val paddle = Entity(rng())
+    val paddle: Entity = rng()
 
     val width = 100
     val height = 10
@@ -41,7 +50,7 @@ case class GameState(
   }
 
   def mkBall(rng: () => Int): GameState = {
-    val ball = Entity(rng())
+    val ball: Entity = rng()
 
     val x = (GameState.gameWidth * 0.2).toInt
     val y = (GameState.gameHeight * 0.6).toInt
@@ -63,7 +72,7 @@ case class GameState(
   }
 
   def mkBrick(rng: () => Int)(x: Int, y: Int, color: Vector3): GameState = {
-    val brick = Entity(rng())
+    val brick: Entity = rng()
 
     val spatial = SpatialComponent.fromRectangle(x, y, 80, 20)
       .copy(collisionType = CollisionType.Static)

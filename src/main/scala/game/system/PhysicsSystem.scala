@@ -2,6 +2,7 @@ package net.jakewoods.breakblock.game.system
 
 import net.jakewoods.breakblock.opengl.math._
 import net.jakewoods.breakblock.game.data._
+import Entity._
 
 import cats._
 import cats.implicits._
@@ -16,9 +17,9 @@ object PhysicsSystem {
   }
 
   def applyVelocity(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = ComponentMap(state.spatials.components.mapValues(spatial => {
+    val newSpatials = state.spatials.mapValues(spatial => {
       spatial.translate(spatial.velocity)
-    }))
+    })
 
     state.copy(spatials = newSpatials)
   }
@@ -26,7 +27,7 @@ object PhysicsSystem {
   /** Prevent objects from escaping the map boundary
     */
   def applyBoundaryCollision(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = state.spatials.components.mapValues(spatial => {
+    val newSpatials = state.spatials.mapValues(spatial => {
       val xTranslation = if(spatial.topLeftCorner.x < 0) {
         (-1.0f * spatial.topLeftCorner.x)
       } else if(spatial.bottomRightCorner.x > GameState.gameWidth) {
@@ -65,7 +66,7 @@ object PhysicsSystem {
       spatial.translate(xTranslation, yTranslation).copy(velocity = Vector2(xVelocity, yVelocity))
     })
 
-    state.copy(spatials = ComponentMap(newSpatials))
+    state.copy(spatials = newSpatials)
   }
 
   def applyCollision(frame: FrameState, state: GameState): GameState = {
