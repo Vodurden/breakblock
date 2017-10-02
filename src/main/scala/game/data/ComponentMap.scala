@@ -13,6 +13,10 @@ case class ComponentMap[A](components: Map[Entity, A]) {
     ComponentMap(components + (entity -> newComponent))
   }
 
+  def update(other: ComponentMap[A]): ComponentMap[A] = {
+    ComponentMap(components ++ other.components)
+  }
+
   def get(e: Entity): A = components(e)
   def getAll: Iterable[A] = components.values
 

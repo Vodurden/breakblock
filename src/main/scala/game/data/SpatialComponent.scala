@@ -63,29 +63,19 @@ object SpatialComponent {
     )
   }
 
-  def getColliding(spatials: ComponentMap[SpatialComponent]): List[Entity] = {
+  def getColliding(
+    spatials: ComponentMap[SpatialComponent]
+  ): List[(Entity, SpatialComponent, Location, Float)] = {
     spatials.components.toList.combinations(2).flatMap {
       case Seq((entityA, a), (entityB, b)) => {
         SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
-          List(entityA, entityB)
+          val newA = (entityA, a, aLocation, overlap)
+          val newB = (entityB, b, bLocation, overlap)
+
+          List(newA, newB)
         }.getOrElse(List.empty)
       }
     }.toList
-  }
-
-  def mapColliding(spatials: ComponentMap[SpatialComponent])
-    (f: (Entity, SpatialComponent, Location, Float) => SpatialComponent): ComponentMap[SpatialComponent] = {
-
-    spatials.components.toList.combinations(2).foldLeft(spatials) {
-      case (spatials, List((entityA, a), (entityB, b))) => {
-        SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
-          val newA = f(entityA, a, aLocation, overlap)
-          val newB = f(entityB, b, bLocation, overlap)
-
-          spatials.update(entityA, newA).update(entityB, newB)
-        }.getOrElse(spatials)
-      }
-    }
   }
 
   // Detects a collison between a and b. Returns the location of impact relative to (a, b)

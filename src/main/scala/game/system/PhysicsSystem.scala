@@ -7,9 +7,9 @@ import cats._
 import cats.implicits._
 
 object PhysicsSystem {
-  val system = (frame: FrameState, state: GameState) => {
+  val system = (frame: FrameState, info: GameStateInfo, state: GameState) => {
     val s = applyBoundaryCollision(frame, state)
-    val s1 = applyCollision(frame, s)
+    val s1 = applyCollision(frame, info, s)
     val s2 = applyVelocity(frame, s1)
 
     s2
@@ -68,15 +68,18 @@ object PhysicsSystem {
     state.copy(spatials = ComponentMap(newSpatials))
   }
 
-  def applyCollision(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = SpatialComponent
-      .mapColliding(state.spatials)((_, spatial, location, overlap) => {
-        println(s"COLLISION, ${frame.time}")
+  def applyCollision(frame: FrameState, info: GameStateInfo, state: GameState): GameState = {
+    val updatedSpatials = info.collidingEntities.flatMap { case (entity, _, location, overlap) =>
+      println(s"COLLISION, ${frame.time}")
+      state.spatials.findByEntity(entity).map { spatial =>
         val velocity = doVelocity(spatial, location)
         val translation = doTranslation(spatial, location, overlap)
 
-        spatial.copy(velocity = velocity).translate(translation)
-      })
+        List(entity -> spatial.copy(velocity = velocity).translate(translation))
+      }.getOrElse(List())
+    }.toMap
+
+    val newSpatials = state.spatials.update(ComponentMap(updatedSpatials))
 
     state.copy(spatials = newSpatials)
   }
