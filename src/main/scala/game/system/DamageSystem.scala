@@ -3,15 +3,15 @@ package net.jakewoods.breakblock.game.system
 import net.jakewoods.breakblock.game.data._
 
 object DamageSystem {
-  val system = (frame: FrameState, state: GameState) => {
-    val state1 = applyCollisionDamage(frame, state)
+  val system = (frame: FrameState, info: GameStateInfo, state: GameState) => {
+    val state1 = applyCollisionDamage(frame, info, state)
     val state2 = applyDeath(state1)
 
     state2
   }
 
-  def applyCollisionDamage(frame: FrameState, state: GameState): GameState = {
-    val collidingEntities = SpatialComponent.getColliding(state.spatials)
+  def applyCollisionDamage(frame: FrameState, info: GameStateInfo, state: GameState): GameState = {
+    val collidingEntities = info.collidingEntities.map { case (entity, _, _, _) => entity }
     val damagedBreakables = collidingEntities.map(entity => {
       println(s"DEATH COLLISION, ${frame.time}")
       state.breakables.findByEntity(entity).map(breakable => {

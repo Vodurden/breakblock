@@ -6,7 +6,7 @@ import net.jakewoods.breakblock.opengl._
 import net.jakewoods.breakblock.game.data._
 
 object PlayerInputSystem {
-  val system = (frame: FrameState, state: GameState) => {
+  val system = (frame: FrameState, _info: GameStateInfo, state: GameState) => {
     frame.events.foldLeft(state)((s, event) => processEvent(event, s))
   }
 

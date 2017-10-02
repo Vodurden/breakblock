@@ -18,6 +18,9 @@ case class ComponentMap[A](intMap: IntMap[A]) {
   }
 
   def ++(right: Iterable[(Entity, A)]): ComponentMap[A] =
+    update(right)
+
+  def update(right: Iterable[(Entity, A)]): ComponentMap[A] =
     ComponentMap(this.intMap ++ right)
 
   def get(e: Entity): A = intMap(e)
