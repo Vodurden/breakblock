@@ -1,7 +1,15 @@
 package net.jakewoods.breakblock.game.data
 
 import net.jakewoods.breakblock.opengl.math._
+import net.jakewoods.breakblock.game.util.HasStore
 import Entity._
+
+import scala.util.Random
+import cats._
+import cats.data._
+import cats.implicits._
+
+import scala.collection.immutable.IntMap
 
 // System overview: (GameState, FrameState) -> (AnalyzedGameState, FrameState) -> [Systems] -> [GameStateDiff] -> GameState
 // TODO: Use IntMap instead of ComponentMap
@@ -10,22 +18,83 @@ import Entity._
 case class GameState(
   paddle: Option[Entity],
 
-  spatials: ComponentMap[SpatialComponent],
-  sprites: ComponentMap[SpriteComponent],
-  breakables: ComponentMap[BreakableComponent]
+  spatials: IntMap[SpatialComponent],
+  sprites: IntMap[SpriteComponent],
+  breakables: IntMap[BreakableComponent]
 ) {
+
   def deleteEntity(entity: Entity): GameState = {
     this.copy(
       paddle = if(Some(entity) == this.paddle) None else this.paddle,
 
-      spatials = spatials.delete(entity),
-      sprites = sprites.delete(entity),
-      breakables = breakables.delete(entity)
+      spatials = spatials - entity,
+      sprites = sprites - entity,
+      breakables = breakables - entity
     )
   }
 
   def deleteEntities(entities: Iterable[Entity]): GameState = {
     entities.foldLeft(this) { (s, entity) => s.deleteEntity(entity) }
+  }
+
+  def update[C](f: IntMap[C] => IntMap[C])(implicit hs: HasStore[GameState, C]): GameState = {
+    hs.set(this, f(hs.get(this)))
+  }
+
+  def get[C](entity: Entity)(implicit hs: HasStore[GameState, C]): Option[C] = {
+    hs.get(this).get(entity)
+  }
+
+  def add[C : HasStore[GameState, ?]](entity: Entity, c: C): GameState = {
+    update[C](store => store + (entity -> c))
+  }
+
+  def modify[C : HasStore[GameState, ?]](entity: Entity)(f: (C => C)): GameState = {
+    update[C] { store =>
+      store.get(entity).map { component =>
+        store + (entity -> f(component))
+      }.getOrElse(store)
+    }
+  }
+
+  def delete[C : HasStore[GameState, ?]](entity: Entity): GameState = {
+    update[C] { store => store - entity }
+  }
+
+  def deleteIf[C : HasStore[GameState, ?]](f: C => Boolean): GameState = {
+    val toDelete = cimapList((e: Entity, c: C) => if(f(c)) Some(e) else None).unite
+    deleteEntities(toDelete)
+  }
+
+  // Component map: Map a pure function over all entities in C
+  def cmap[C](f: C => C)(implicit hs: HasStore[GameState, C]): GameState = {
+    cimap((_: Entity, c: C) => f(c))
+  }
+
+  // Component map that can delete components in it's domain
+  def cmapD[C](f: C => Option[C])(implicit hs: HasStore[GameState, C]): GameState = {
+    cimapD[C]((_, c) => f(c))
+  }
+
+  def cimapD[C](f: (Entity, C) => Option[C])(implicit hs: HasStore[GameState, C]): GameState = {
+    update[C](store => store.modifyOrRemove(f))
+  }
+
+  // Indexed component map
+  def cimap[C](f: (Entity, C) => C)(implicit hs: HasStore[GameState, C]): GameState = {
+    update[C](store => store.map { case (e, c) => (e, f(e, c))})
+  }
+
+  def cmapList[C, A](f: C => A)(implicit hs: HasStore[GameState, C]): List[A] = {
+    cimapList((_: Entity, c: C) => f(c))
+  }
+
+  def cimapList[C, A](f: (Entity, C) => A)(implicit hs: HasStore[GameState, C]): List[A] = {
+    this.toList.map { case (e, c) => f(e, c) }
+  }
+
+  def toList[C](implicit hs: HasStore[GameState, C]): List[(Entity, C)] = {
+    hs.get(this).toList
   }
 
   def mkPaddle(rng: () => Int): GameState = {
@@ -42,11 +111,9 @@ case class GameState(
     val color = Vector3(0.5f, 0.0f, 0.0f) // Red-ish
     val sprite = SpriteComponent(color)
 
-    this.copy(
-      paddle = Some(paddle),
-      spatials = spatials.update(paddle, spatial),
-      sprites = sprites.update(paddle, sprite)
-    )
+    this.add(paddle, spatial)
+      .add(paddle, sprite)
+      .copy(paddle = Some(paddle))
   }
 
   def mkBall(rng: () => Int): GameState = {
@@ -65,10 +132,27 @@ case class GameState(
     val color = Vector3(1.0f, 1.0f, 1.0f)
     val sprite = SpriteComponent(color)
 
-    this.copy(
-      spatials = spatials.update(ball, spatial),
-      sprites = sprites.update(ball, sprite)
-    )
+    this.add(ball, spatial)
+      .add(ball, sprite)
+  }
+
+  def mkBullet(x: Int, y: Int, color: Vector3): GameState = {
+    val random = new Random()
+    val genEntityId = () => random.nextInt(50000)
+    val bullet: Entity = genEntityId()
+
+    val spatial = SpatialComponent.fromRectangle(x, y, 5, 5)
+      .copy(
+        velocity = Vector2(0, -5),
+        collisionType = CollisionType.Static
+      )
+
+    val sprite = SpriteComponent(color)
+    val breakable = BreakableComponent(1)
+
+    this.add(bullet, spatial)
+      .add(bullet, sprite)
+      .add(bullet, breakable)
   }
 
   def mkBrick(rng: () => Int)(x: Int, y: Int, color: Vector3): GameState = {
@@ -81,11 +165,7 @@ case class GameState(
 
     val breakable = BreakableComponent(1)
 
-    this.copy(
-      spatials = spatials.update(brick, spatial),
-      sprites = sprites.update(brick, sprite),
-      breakables = breakables.update(brick, breakable)
-    )
+    this.add(brick, spatial).add(brick, sprite).add(brick, breakable)
   }
 
   def mkBrickLine(rng: () => Int)(startX: Int, startY: Int, numBricks: Int, padding: Int, color: Vector3): GameState = {
@@ -98,13 +178,31 @@ case class GameState(
 }
 
 object GameState {
+  implicit val hasSpatials: HasStore[GameState, SpatialComponent]
+    = new HasStore[GameState, SpatialComponent] {
+      override def get(s: GameState) = s.spatials
+      override def set(s: GameState, c: IntMap[SpatialComponent]) = s.copy(spatials = c)
+    }
+
+  implicit val hasSprites: HasStore[GameState, SpriteComponent] =
+    new HasStore[GameState, SpriteComponent] {
+      override def get(s: GameState) = s.sprites
+      override def set(s: GameState, c: IntMap[SpriteComponent]) = s.copy(sprites = c)
+    }
+
+  implicit val hasBreakables: HasStore[GameState, BreakableComponent] =
+    new HasStore[GameState, BreakableComponent] {
+      override def get(s: GameState) = s.breakables
+      override def set(s: GameState, c: IntMap[BreakableComponent]) = s.copy(breakables = c)
+    }
+
   val gameWidth = 640
   val gameHeight = 480
 
   def empty: GameState = GameState(
     paddle = None,
-    spatials = ComponentMap.empty[SpatialComponent],
-    sprites = ComponentMap.empty[SpriteComponent],
-    breakables = ComponentMap.empty[BreakableComponent]
+    spatials = IntMap.empty[SpatialComponent],
+    sprites = IntMap.empty[SpriteComponent],
+    breakables = IntMap.empty[BreakableComponent]
   )
 }

@@ -27,7 +27,7 @@ class PhysicsSystem(collisionHandlers: List[(Collision, FrameState, GameState) =
   }
 
   def detectBoundaryCollisions(state: GameState): List[Collision] = {
-    state.spatials.intMap.toList.flatMap { case (entity, spatial) =>
+    state.cimapList[SpatialComponent, List[Collision]] { case (entity, spatial) =>
       val xCollision: Option[Collision] = if(spatial.topLeftCorner.x < 0) {
         Some(BoundaryCollision(Impact(entity, Location.Left, spatial.topLeftCorner.x * -1)))
       } else if(spatial.bottomRightCorner.x > GameState.gameWidth) {
@@ -45,11 +45,11 @@ class PhysicsSystem(collisionHandlers: List[(Collision, FrameState, GameState) =
       }
 
       List(xCollision, yCollision).unite
-    }
+    }.flatten
   }
 
   def detectEntityCollisions(state: GameState): List[Collision] = {
-    state.spatials.intMap.toList.combinations(2).map {
+    state.toList[SpatialComponent].combinations(2).map {
       case Seq((entityA, a), (entityB, b)) => {
         SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
           val firstImpact = Impact(entityA, aLocation, overlap)
@@ -71,27 +71,18 @@ class PhysicsSystem(collisionHandlers: List[(Collision, FrameState, GameState) =
       case EntityCollision(firstImpact, secondImpact) => List(firstImpact, secondImpact)
     }
 
-    val updatedSpatials = impacts.map { impact =>
-      state.spatials.findByEntity(impact.entity).map { spatial =>
+    impacts.foldLeft(state) { case (s, impact) =>
+      s.modify(impact.entity) { (spatial: SpatialComponent) =>
         val velocity = doVelocity(spatial, impact.location)
         val translation = doTranslation(spatial, impact.location, impact.depth)
-        val newSpatial = spatial.copy(velocity = velocity).translate(translation)
 
-        (impact.entity -> newSpatial)
+        spatial.copy(velocity = velocity).translate(translation)
       }
-    }.unite
-
-    val newSpatials = state.spatials.update(updatedSpatials)
-
-    state.copy(spatials = newSpatials)
+    }
   }
 
   def applyVelocity(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = state.spatials.mapValues(spatial => {
-      spatial.translate(spatial.velocity)
-    })
-
-    state.copy(spatials = newSpatials)
+    state.cmap((spatial: SpatialComponent) => spatial.translate(spatial.velocity))
   }
 
   def doTranslation(

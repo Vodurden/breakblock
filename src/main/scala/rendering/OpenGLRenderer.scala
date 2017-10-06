@@ -120,12 +120,13 @@ class OpenGLRenderer(
       // This tells me we need a much better way of encoding entities.
       // We basically want to get the entities that have
       // a position and rectangle component.
-      val spatials = gameState.spatials
-      val rectangles = gameState.sprites
-      val renderables = (spatials intersection rectangles).values
+      // val spatials = gameState.spatials
+      // val rectangles = gameState.sprites
+      // val renderables = (spatials intersection rectangles).values
+      val renderables = gameState.toList[(SpatialComponent, SpriteComponent)]
 
       glUseProgram(worldShader)
-      renderables.foreach { case(spatial, sprite) =>
+      renderables.foreach { case(entity, (spatial, sprite)) =>
         val translationMatrix = Matrix4x4.forTranslation(Vector3(spatial.x, spatial.y, 0.0f))
         val scaleMatrix = Matrix4x4.forScale(Vector3(spatial.width, spatial.height, 1.0f))
         val transformMatrix = translationMatrix * scaleMatrix

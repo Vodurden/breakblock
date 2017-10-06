@@ -40,3 +40,6 @@ libraryDependencies ++= Seq(
   "org.lwjgl" % "lwjgl-opengl" % "3.1.1" classifier lwjglNativesClasifier,
   "org.lwjgl" % "lwjgl-stb" % "3.1.1" classifier lwjglNativesClasifier
 )
+
+resolvers += Resolver.sonatypeRepo("releases")
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.4")

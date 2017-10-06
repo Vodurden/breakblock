@@ -16,7 +16,7 @@ object DamageSystem {
     collision match {
       case EntityCollision(firstImpact, secondImpact) => {
         val state2 = applyCollisionDamage(firstImpact.entity, state)
-        val state3 = applyCollisionDamage(secondImpact.entity, state)
+        val state3 = applyCollisionDamage(secondImpact.entity, state2)
 
         applyDeath(state3)
       }
@@ -25,18 +25,11 @@ object DamageSystem {
   }
 
   def applyCollisionDamage(entity: Entity, state: GameState): GameState = {
-    val damagedBreakables = state.breakables.adjust(entity, breakable => {
-      breakable.copy(health = breakable.health - 1)
-    })
-
-    state.copy(breakables = damagedBreakables)
+    println(s"Damaging $entity, ${state.get[BreakableComponent](entity)}")
+    state.modify(entity) { (b: BreakableComponent) => b.copy(health = b.health - 1) }
   }
 
   def applyDeath(state: GameState): GameState = {
-    val deadEntities = state.breakables
-      .filter { case (_, breakable) => breakable.health <= 0 }
-      .keys
-
-    state.deleteEntities(deadEntities)
+    state.deleteIf((breakable: BreakableComponent) => breakable.health <= 0)
   }
 }

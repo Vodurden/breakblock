@@ -3,6 +3,7 @@ package net.jakewoods.breakblock.game.system
 import org.lwjgl.glfw.GLFW._
 
 import net.jakewoods.breakblock.opengl._
+import net.jakewoods.breakblock.opengl.math._
 import net.jakewoods.breakblock.game.data._
 
 object PlayerInputSystem {
@@ -14,6 +15,18 @@ object PlayerInputSystem {
     event match {
       case Window.KeyPress(GLFW_KEY_A, _, GLFW_PRESS | GLFW_REPEAT, _) => movePaddleX(state, -15)
       case Window.KeyPress(GLFW_KEY_D, _, GLFW_PRESS | GLFW_REPEAT, _) => movePaddleX(state, 15)
+      case Window.KeyPress(GLFW_KEY_S, _, GLFW_PRESS | GLFW_REPEAT, _) => {
+        val maybeState = for {
+          paddle <- state.paddle
+          spatial <- state.get[SpatialComponent](paddle)
+        } yield state.mkBullet(
+          spatial.centerX.toInt,
+          spatial.y.toInt - 6,
+          Vector3(1.0f, 1.0f, 1.0f)
+        )
+
+        maybeState.getOrElse(state)
+      }
       case _ => state
     }
   }
@@ -22,10 +35,7 @@ object PlayerInputSystem {
     println(s"Searching in: $state")
 
     state.paddle.map(paddle => {
-      val paddleSpatial = state.spatials.findByEntity(paddle).get
-      val newSpatial = paddleSpatial.translate(speed, 0)
-      val newSpatials = state.spatials.update(paddle, newSpatial)
-      state.copy(spatials = newSpatials)
+      state.modify(paddle) { (spatial: SpatialComponent) => spatial.translate(speed, 0) }
     }).getOrElse(state)
   }
 }
