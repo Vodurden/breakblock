@@ -13,6 +13,15 @@ case class ComponentMap[A](intMap: IntMap[A]) {
     ComponentMap(intMap - entity)
   }
 
+  def adjust(entity: Entity, update: A => A): ComponentMap[A] = {
+    val newIntMap = findByEntity(entity).map(component => {
+      val newComponent = update(component)
+      intMap.updated(entity, newComponent)
+    }).getOrElse(intMap)
+
+    ComponentMap(newIntMap)
+  }
+
   def update(entity: Entity, newComponent: A): ComponentMap[A] = {
     ComponentMap(intMap + (entity -> newComponent))
   }

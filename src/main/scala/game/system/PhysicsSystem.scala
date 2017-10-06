@@ -3,84 +3,93 @@ package net.jakewoods.breakblock.game.system
 import net.jakewoods.breakblock.opengl.math._
 import net.jakewoods.breakblock.game.data._
 import Entity._
+import PhysicsSystem._
+import SpatialComponent.Location
 
 import cats._
+import cats.data._
 import cats.implicits._
 
-object PhysicsSystem {
-  val system = (frame: FrameState, info: GameStateInfo, state: GameState) => {
-    val s = applyBoundaryCollision(frame, state)
-    val s1 = applyCollision(frame, info, s)
-    val s2 = applyVelocity(frame, s1)
+class PhysicsSystem(collisionHandlers: List[(Collision, FrameState, GameState) => GameState]) {
+  val system = (frame: FrameState, gameState: GameState) => {
+    val collisions = detectCollisions(gameState)
 
-    s2
+    val handlers = (handleCollision _) :: collisionHandlers
+    val collidedState = collisions.foldLeft(gameState)((state, collision) => {
+      handlers.foldLeft(state)((s, handler) => handler(collision, frame, s))
+    })
+
+    applyVelocity(frame, collidedState)
+  }
+
+  def detectCollisions(state: GameState): List[Collision] = {
+    detectBoundaryCollisions(state) ++ detectEntityCollisions(state)
+  }
+
+  def detectBoundaryCollisions(state: GameState): List[Collision] = {
+    state.spatials.intMap.toList.flatMap { case (entity, spatial) =>
+      val xCollision: Option[Collision] = if(spatial.topLeftCorner.x < 0) {
+        Some(BoundaryCollision(Impact(entity, Location.Left, spatial.topLeftCorner.x * -1)))
+      } else if(spatial.bottomRightCorner.x > GameState.gameWidth) {
+        Some(BoundaryCollision(Impact(entity, Location.Right, spatial.bottomRightCorner.x - GameState.gameWidth)))
+      } else {
+        None
+      }
+
+      val yCollision: Option[Collision] = if(spatial.topLeftCorner.y < 0) {
+        Some(BoundaryCollision(Impact(entity, Location.Top, spatial.topLeftCorner.y * -1)))
+      } else if(spatial.bottomRightCorner.y > GameState.gameHeight) {
+        Some(BoundaryCollision(Impact(entity, Location.Bottom, spatial.bottomRightCorner.y - GameState.gameHeight)))
+      } else {
+        None
+      }
+
+      List(xCollision, yCollision).unite
+    }
+  }
+
+  def detectEntityCollisions(state: GameState): List[Collision] = {
+    state.spatials.intMap.toList.combinations(2).map {
+      case Seq((entityA, a), (entityB, b)) => {
+        SpatialComponent.collision(a, b).map { case(aLocation, bLocation, overlap) =>
+          val firstImpact = Impact(entityA, aLocation, overlap)
+          val secondImpact = Impact(entityB, bLocation, overlap)
+
+          EntityCollision(firstImpact, secondImpact)
+        }
+      }
+    }.toList.unite
+  }
+
+  def handleCollision(
+    collision: Collision,
+    frame: FrameState,
+    state: GameState
+  ): GameState = {
+    val impacts = collision match {
+      case BoundaryCollision(impact) => List(impact)
+      case EntityCollision(firstImpact, secondImpact) => List(firstImpact, secondImpact)
+    }
+
+    val updatedSpatials = impacts.map { impact =>
+      state.spatials.findByEntity(impact.entity).map { spatial =>
+        val velocity = doVelocity(spatial, impact.location)
+        val translation = doTranslation(spatial, impact.location, impact.depth)
+        val newSpatial = spatial.copy(velocity = velocity).translate(translation)
+
+        (impact.entity -> newSpatial)
+      }
+    }.unite
+
+    val newSpatials = state.spatials.update(updatedSpatials)
+
+    state.copy(spatials = newSpatials)
   }
 
   def applyVelocity(frame: FrameState, state: GameState): GameState = {
     val newSpatials = state.spatials.mapValues(spatial => {
       spatial.translate(spatial.velocity)
     })
-
-    state.copy(spatials = newSpatials)
-  }
-
-  /** Prevent objects from escaping the map boundary
-    */
-  def applyBoundaryCollision(frame: FrameState, state: GameState): GameState = {
-    val newSpatials = state.spatials.mapValues(spatial => {
-      val xTranslation = if(spatial.topLeftCorner.x < 0) {
-        (-1.0f * spatial.topLeftCorner.x)
-      } else if(spatial.bottomRightCorner.x > GameState.gameWidth) {
-        (GameState.gameWidth - spatial.bottomRightCorner.x)
-      } else {
-        0
-      }
-
-      val yTranslation = if(spatial.topLeftCorner.y < 0) {
-        (-1.0f * spatial.topLeftCorner.y)
-      } else if(spatial.bottomRightCorner.y > GameState.gameHeight) {
-        (GameState.gameHeight - spatial.bottomRightCorner.y)
-      } else {
-        0
-      }
-
-      // If we need to move then we also need to apply our collison model
-      val xVelocity = if(xTranslation != 0) {
-        spatial.collisionType match {
-          case CollisionType.Static => 0
-          case CollisionType.Bounce => spatial.velocity.x * -1.0f
-        }
-      } else {
-        spatial.velocity.x
-      }
-
-      val yVelocity = if(yTranslation != 0) {
-        spatial.collisionType match {
-          case CollisionType.Static => 0
-          case CollisionType.Bounce => spatial.velocity.y * -1.0f
-        }
-      } else {
-        spatial.velocity.y
-      }
-
-      spatial.translate(xTranslation, yTranslation).copy(velocity = Vector2(xVelocity, yVelocity))
-    })
-
-    state.copy(spatials = newSpatials)
-  }
-
-  def applyCollision(frame: FrameState, info: GameStateInfo, state: GameState): GameState = {
-    val updatedSpatials = info.collidingEntities.flatMap { case (entity, _, location, overlap) =>
-      println(s"COLLISION, ${frame.time}")
-      state.spatials.findByEntity(entity).map { spatial =>
-        val velocity = doVelocity(spatial, location)
-        val translation = doTranslation(spatial, location, overlap)
-
-        List(entity -> spatial.copy(velocity = velocity).translate(translation))
-      }.getOrElse(List())
-    }.toMap
-
-    val newSpatials = state.spatials.update(updatedSpatials)
 
     state.copy(spatials = newSpatials)
   }
@@ -111,4 +120,23 @@ object PhysicsSystem {
         Vector2(spatial.velocity.x * -1.0f, spatial.velocity.y)
     }
   }
+}
+
+object PhysicsSystem {
+  /** Describes a collision between two entities.
+    *
+    * Provides an `impact` for each entity that describes the collision
+    * from it's perspective.
+    */
+  sealed trait Collision
+  case class EntityCollision(firstImpact: Impact, secondImpact: Impact) extends Collision
+  case class BoundaryCollision(impact: Impact) extends Collision
+
+  /** Describes a collision from the perspective of `entity`.
+    *
+    * entity: The entity that was impacted by this collision
+    * location: The location relative to the entity where the collision occurred
+    * depth: How deeply in units does the colliding object penetrate `entity`
+    */
+  case class Impact(entity: Entity, location: Location, depth: Float)
 }

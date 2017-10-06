@@ -34,8 +34,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Random
 
-// TODO: Make systems fire off the changes the want to make instead of
-//       making changes inline. That'll fix the death-ball issue
 object GameMain {
   def main(args: Array[String]): Unit = {
     println("Hello streaming!")
@@ -54,16 +52,16 @@ object GameMain {
       .mkBrickLine(genEntityId)(22, 105, 7, 5, Vector3(0.5f, 0.5f, 0.2f))
 
     val updateState = (frameState: FrameState, gameState: GameState) => {
-      val info = GameStateInfo.from(gameState)
+      val physicsSystem = new PhysicsSystem(List(DamageSystem.onCollision))
 
-      val systems = List[(FrameState, GameStateInfo, GameState) => GameState](
+      val systems = List[(FrameState, GameState) => GameState](
         PlayerInputSystem.system,
         DamageSystem.system,
-        PhysicsSystem.system
+        physicsSystem.system
       )
 
       systems.foldLeft(gameState)((state, system) => {
-        system(frameState, info, state)
+        system(frameState, state)
       })
     }
 

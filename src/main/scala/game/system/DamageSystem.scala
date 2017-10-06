@@ -1,27 +1,35 @@
 package net.jakewoods.breakblock.game.system
 
 import net.jakewoods.breakblock.game.data._
+import PhysicsSystem._
+import Entity._
 
 object DamageSystem {
-  val system = (frame: FrameState, info: GameStateInfo, state: GameState) => {
-    val state1 = applyCollisionDamage(frame, info, state)
-    val state2 = applyDeath(state1)
+
+  val system = (frame: FrameState, state: GameState) => {
+    val state2 = applyDeath(state)
 
     state2
   }
 
-  def applyCollisionDamage(frame: FrameState, info: GameStateInfo, state: GameState): GameState = {
-    val collidingEntities = info.collidingEntities.map { case (entity, _, _, _) => entity }
-    val damagedBreakables = collidingEntities.map(entity => {
-      println(s"DEATH COLLISION, ${frame.time}")
-      state.breakables.findByEntity(entity).map(breakable => {
-        (entity, breakable.copy(health = breakable.health - 1))
-      })
-    }).flatten.toMap
+  def onCollision(collision: Collision, frame: FrameState, state: GameState): GameState = {
+    collision match {
+      case EntityCollision(firstImpact, secondImpact) => {
+        val state2 = applyCollisionDamage(firstImpact.entity, state)
+        val state3 = applyCollisionDamage(secondImpact.entity, state)
 
-    state.copy(
-      breakables = state.breakables ++ damagedBreakables
-    )
+        applyDeath(state3)
+      }
+      case BoundaryCollision(_) => state
+    }
+  }
+
+  def applyCollisionDamage(entity: Entity, state: GameState): GameState = {
+    val damagedBreakables = state.breakables.adjust(entity, breakable => {
+      breakable.copy(health = breakable.health - 1)
+    })
+
+    state.copy(breakables = damagedBreakables)
   }
 
   def applyDeath(state: GameState): GameState = {
