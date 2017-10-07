@@ -7,6 +7,9 @@ import scala.collection.immutable.IntMap
 trait HasStore[S, C] {
   def get(s: S): IntMap[C]
   def set(s: S, c: IntMap[C]): S
+  def update(s: S, f: IntMap[C] => IntMap[C]): S = {
+    set(s, f(get(s)))
+  }
 }
 
 object HasStore {
@@ -21,8 +24,10 @@ object HasStore {
       val aValues: IntMap[A] = c.transform((entity, t: (A,B)) => t._1)
       val bValues: IntMap[B] = c.transform((entity, t: (A,B)) => t._2)
 
-      val state2 = ha.set(s, aValues)
-      hb.set(state2, bValues)
+      val state2 = ha.update(s, existing => existing ++ aValues)
+      val state3 = hb.update(state2, existing => existing ++ bValues)
+
+      state3
     }
   }
 }

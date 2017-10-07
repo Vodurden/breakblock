@@ -16,26 +16,23 @@ object PlayerInputSystem {
       case Window.KeyPress(GLFW_KEY_A, _, GLFW_PRESS | GLFW_REPEAT, _) => movePaddleX(state, -15)
       case Window.KeyPress(GLFW_KEY_D, _, GLFW_PRESS | GLFW_REPEAT, _) => movePaddleX(state, 15)
       case Window.KeyPress(GLFW_KEY_S, _, GLFW_PRESS | GLFW_REPEAT, _) => {
-        val maybeState = for {
-          paddle <- state.paddle
-          spatial <- state.get[SpatialComponent](paddle)
-        } yield state.mkBullet(
-          spatial.centerX.toInt,
-          spatial.y.toInt - 6,
-          Vector3(1.0f, 1.0f, 1.0f)
-        )
+        val playerSpatials =
+          state.cmapList[(PlayerComponent, SpatialComponent), SpatialComponent] {
+            case (_, s) => s
+          }
 
-        maybeState.getOrElse(state)
+        playerSpatials.foldLeft(state) { case(s, p) =>
+          val color = Vector3(1.0f, 1.0f, 1.0f)
+          s.mkBullet(p.centerX.toInt, p.y.toInt - 6, color)
+        }
       }
       case _ => state
     }
   }
 
   def movePaddleX(state: GameState, speed: Int): GameState = {
-    println(s"Searching in: $state")
-
-    state.paddle.map(paddle => {
-      state.modify(paddle) { (spatial: SpatialComponent) => spatial.translate(speed, 0) }
-    }).getOrElse(state)
+    state.cmap[(PlayerComponent, SpatialComponent)] {
+      case (p, spatial) => (p, spatial.translate(speed, 0))
+    }
   }
 }

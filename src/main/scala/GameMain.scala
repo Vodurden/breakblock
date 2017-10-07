@@ -36,8 +36,7 @@ import scala.util.Random
 
 object GameMain {
   def main(args: Array[String]): Unit = {
-    println("Hello streaming!")
-
+    println("Start game")
     val random = new Random()
     val genEntityId = () => random.nextInt(50000)
 

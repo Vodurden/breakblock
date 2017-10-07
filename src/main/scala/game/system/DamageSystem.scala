@@ -25,7 +25,6 @@ object DamageSystem {
   }
 
   def applyCollisionDamage(entity: Entity, state: GameState): GameState = {
-    println(s"Damaging $entity, ${state.get[BreakableComponent](entity)}")
     state.modify(entity) { (b: BreakableComponent) => b.copy(health = b.health - 1) }
   }
 

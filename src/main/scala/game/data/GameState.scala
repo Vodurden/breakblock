@@ -11,22 +11,14 @@ import cats.implicits._
 
 import scala.collection.immutable.IntMap
 
-// System overview: (GameState, FrameState) -> (AnalyzedGameState, FrameState) -> [Systems] -> [GameStateDiff] -> GameState
-// TODO: Use IntMap instead of ComponentMap
-// TODO: Remove Paddle, use "PlayerControlledComponent" or similar
-
 case class GameState(
-  paddle: Option[Entity],
-
   spatials: IntMap[SpatialComponent],
   sprites: IntMap[SpriteComponent],
-  breakables: IntMap[BreakableComponent]
+  breakables: IntMap[BreakableComponent],
+  players: IntMap[PlayerComponent]
 ) {
-
   def deleteEntity(entity: Entity): GameState = {
     this.copy(
-      paddle = if(Some(entity) == this.paddle) None else this.paddle,
-
       spatials = spatials - entity,
       sprites = sprites - entity,
       breakables = breakables - entity
@@ -71,6 +63,11 @@ case class GameState(
     cimap((_: Entity, c: C) => f(c))
   }
 
+  // Indexed component map
+  def cimap[C](f: (Entity, C) => C)(implicit hs: HasStore[GameState, C]): GameState = {
+    update[C](store => store.map { case (e, c) => (e, f(e, c))})
+  }
+
   // Component map that can delete components in it's domain
   def cmapD[C](f: C => Option[C])(implicit hs: HasStore[GameState, C]): GameState = {
     cimapD[C]((_, c) => f(c))
@@ -80,10 +77,6 @@ case class GameState(
     update[C](store => store.modifyOrRemove(f))
   }
 
-  // Indexed component map
-  def cimap[C](f: (Entity, C) => C)(implicit hs: HasStore[GameState, C]): GameState = {
-    update[C](store => store.map { case (e, c) => (e, f(e, c))})
-  }
 
   def cmapList[C, A](f: C => A)(implicit hs: HasStore[GameState, C]): List[A] = {
     cimapList((_: Entity, c: C) => f(c))
@@ -113,7 +106,7 @@ case class GameState(
 
     this.add(paddle, spatial)
       .add(paddle, sprite)
-      .copy(paddle = Some(paddle))
+      .add(paddle, PlayerComponent())
   }
 
   def mkBall(rng: () => Int): GameState = {
@@ -196,13 +189,19 @@ object GameState {
       override def set(s: GameState, c: IntMap[BreakableComponent]) = s.copy(breakables = c)
     }
 
+  implicit val hasPlayers: HasStore[GameState, PlayerComponent] =
+    new HasStore[GameState, PlayerComponent] {
+      override def get(s: GameState) = s.players
+      override def set(s: GameState, c: IntMap[PlayerComponent]) = s.copy(players = c)
+    }
+
   val gameWidth = 640
   val gameHeight = 480
 
   def empty: GameState = GameState(
-    paddle = None,
     spatials = IntMap.empty[SpatialComponent],
     sprites = IntMap.empty[SpriteComponent],
-    breakables = IntMap.empty[BreakableComponent]
+    breakables = IntMap.empty[BreakableComponent],
+    players = IntMap.empty[PlayerComponent]
   )
 }
